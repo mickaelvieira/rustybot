@@ -1,0 +1,7 @@
+[package]
+name = "rustybot"
+version = "0.1.0"
+authors = ["Mickael Vieira <contact@mickael-vieira.com>"]
+
+[dependencies]
+kuchiki = "0.4.0"
