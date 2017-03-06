@@ -5,3 +5,4 @@ authors = ["Mickael Vieira <contact@mickael-vieira.com>"]
 
 [dependencies]
 kuchiki = "0.4.0"
+url = "1.4.0"
