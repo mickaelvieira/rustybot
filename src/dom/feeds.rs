@@ -17,19 +17,19 @@ impl FeedType for str {
 }
 
 #[allow(dead_code)]
-struct Feed {
+pub struct Feed {
     href: ParsedUrl,
     title: String,
-    feed_type: FeedType,
+    feed_type: String,
 }
 
 #[allow(dead_code)]
 impl Feed {
     fn is_rss(&self) -> bool {
-        self.feed_type.is_rss()
+        self.feed_type.as_str() == "application/rss+xml"
     }
     fn is_atom(&self) -> bool {
-        self.feed_type.is_atom()
+        self.feed_type.as_str() == "application/atom+xml"
     }
 }
 
@@ -37,7 +37,7 @@ pub fn get_feed() -> Feed {
     Feed {
         href: ParsedUrl::from("http://google.com"),
         title: "whatever".to_string(),
-        feed_type: "application/atom+xml",
+        feed_type: "application/atom+xml".to_string(),
     }
 }
 

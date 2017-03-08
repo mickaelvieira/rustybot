@@ -5,7 +5,7 @@ fn clean_html_text(text: &str) -> String {
 
 /// Represent some texts extracted from the HTML document
 pub struct Text {
-    pub value: String
+    pub value: String,
 }
 
 impl<'a> From<&'a str> for Text {

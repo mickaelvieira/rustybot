@@ -35,12 +35,17 @@ pub struct Heading {
 
 impl Heading {
     pub fn from_tag(tag: &str, value: &str) -> Heading {
-        let mut chars: Vec<char> = tag.to_string().chars().collect();
+        let mut chars: Vec<char> = tag.to_string()
+            .chars()
+            .collect();
         let level: u32 = chars.last_mut()
             .unwrap_or(&mut '0')
             .to_digit(10)
             .unwrap_or(0);
 
-        Heading{ level: level, value: Text::from(value) }
+        Heading {
+            level: level,
+            value: Text::from(value),
+        }
     }
 }
