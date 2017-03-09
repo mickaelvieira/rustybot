@@ -1,21 +1,6 @@
-use dom::parsedurl::ParsedUrl;
+use dom::parsed_url::ParsedUrl;
 
 /// http://www.jonathanturner.org/2016/02/down-the-rabbit-hole-with-traits.html
-
-trait FeedType {
-    fn is_rss(&self) -> bool;
-    fn is_atom(&self) -> bool;
-}
-
-impl FeedType for str {
-    fn is_rss(&self) -> bool {
-        self.to_string() == "application/atom+xml"
-    }
-    fn is_atom(&self) -> bool {
-        self.to_string() == "application/rss+xml"
-    }
-}
-
 #[allow(dead_code)]
 pub struct Feed {
     href: ParsedUrl,
@@ -25,53 +10,48 @@ pub struct Feed {
 
 #[allow(dead_code)]
 impl Feed {
+    fn new(url: &str, title: &str, feed_type: &str) -> Feed {
+        Feed {
+            href: ParsedUrl::new(url),
+            title: title.to_string(),
+            feed_type: feed_type.to_string(),
+        }
+    }
+
     fn is_rss(&self) -> bool {
         self.feed_type.as_str() == "application/rss+xml"
     }
+
     fn is_atom(&self) -> bool {
         self.feed_type.as_str() == "application/atom+xml"
     }
 }
 
 pub fn get_feed() -> Feed {
-    Feed {
-        href: ParsedUrl::from("http://google.com"),
-        title: "whatever".to_string(),
-        feed_type: "application/atom+xml".to_string(),
-    }
+    Feed::new("http://google.com", "whatever", "application/atom+xml")
 }
 
+#[cfg(test)]
+mod tests {
 
+    use super::*;
 
-// #[allow(dead_code)]
-// enum Feeds {
-//     Atom { href: ParsedUrl, title: String },
-//     Rss { href: ParsedUrl, title: String },
-// }
+    #[test]
+    fn it_creates_a_new_instance() {
+        let _ = Feed::new("http://google.com", "whatever", "application/atom+xml");
+    }
 
-// struct Atom {
-//     href: ParsedUrl,
-//     title: String,
-// }
-//
-// struct Rss {
-//     href: ParsedUrl,
-//     title: String,
-// }
-//
-// #[allow(dead_code)]
-// fn make_feed(type_feed: &str, href: &str, title: &str) -> Option<Feeds> {
-//     if type_feed.is_atom() {
-//         return Some(Feeds::Atom {
-//             href: ParsedUrl::from(href),
-//             title: title.to_string(),
-//         });
-//     } else if type_feed.is_rss() {
-//         return Some(Feeds::Rss {
-//             href: ParsedUrl::from(href),
-//             title: title.to_string(),
-//         });
-//     }
-//
-//     None
-// }
+    #[test]
+    fn it_knows_when_it_is_a_rss_feed() {
+        let f = Feed::new("http://google.com", "whatever", "application/rss+xml");
+        assert!(f.is_rss());
+        assert!(!f.is_atom());
+    }
+
+    #[test]
+    fn it_knows_when_it_is_an_atom_feed() {
+        let f = Feed::new("http://google.com", "whatever", "application/atom+xml");
+        assert!(!f.is_rss());
+        assert!(f.is_atom());
+    }
+}
