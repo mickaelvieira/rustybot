@@ -95,4 +95,10 @@ mod tests {
         let h = Heading::from_tag("H6", "The Title");
         assert_eq!(h.level(), 6);
     }
+
+    #[test]
+    fn it_has_the_level_0_when_it_can_not_be_parsed() {
+        let h = Heading::from_tag("", "The Title");
+        assert_eq!(h.level(), 0);
+    }
 }

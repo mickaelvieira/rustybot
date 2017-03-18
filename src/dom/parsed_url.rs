@@ -1,13 +1,23 @@
 use url::Url;
 use regex::Regex;
 
+fn clean_chars(url: &str) -> String {
+    url.trim()
+       .replace("—", "-")
+       .to_lowercase()
+}
+
 pub struct ParsedUrl {
+    original: String,
     parsed: Url,
 }
 
 impl ParsedUrl {
     pub fn new(url: &str) -> ParsedUrl {
-        ParsedUrl { parsed: Url::parse(url).unwrap() }
+        ParsedUrl {
+            original: String::from(url),
+            parsed: Url::parse(clean_chars(url).as_str()).unwrap(),
+        }
     }
 
     pub fn keywords(&self) -> Vec<String> {
@@ -18,16 +28,19 @@ impl ParsedUrl {
             .replace("_", " ")
             .replace(".", " ")
             .replace("/", " ")
-            .replace("%E2%80%94", " ")
             .split_whitespace()
             .map(|s| s.to_string())
             .collect::<Vec<String>>()
+    }
+
+    pub fn is_secure(&self) -> bool {
+        self.parsed.scheme() == "https"
     }
 }
 
 impl ToString for ParsedUrl {
     fn to_string(&self) -> String {
-        self.parsed.as_str().to_string()
+        self.original.to_owned()
     }
 }
 
@@ -38,16 +51,25 @@ mod tests {
 
     #[test]
     fn it_creates_a_new_instance() {
-        let p = ParsedUrl::new("http://crates.io");
-        assert_eq!(p.to_string(), "http://crates.io/");
+        let u = "http://crates.io";
+        let p = ParsedUrl::new(u);
+        assert_eq!(p.to_string(), u);
+    }
+
+    #[test]
+    fn it_knows_when_it_is_secure() {
+        let p1 = ParsedUrl::new("http://crates.io");
+        assert!(!p1.is_secure());
+
+        let p2 = ParsedUrl::new("https://crates.io");
+        assert!(p2.is_secure());
     }
 
     #[test]
     fn it_handles_non_standards_hyphens() {
         let u = "http://www.example.com/state—regional-govt—politics/";
         let p = ParsedUrl::new(u);
-        let e = "http://www.example.com/state%E2%80%94regional-govt%E2%80%94politics/";
-        assert_eq!(p.to_string(), e);
+        assert_eq!(p.to_string(), u);
     }
 
     #[test]
@@ -55,6 +77,17 @@ mod tests {
         let u = "http://example.com/awesome_section/my—great-article.php";
         let p = ParsedUrl::new(u);
 
+        assert_eq!(p.keywords(),
+                   vec!["awesome", "section", "my", "great", "article"]);
+    }
+
+    #[test]
+    fn it_handles_uppercase_urls() {
+        let u = "HTTP://EXAMPLE.COM/AWESOME_SECTION/MY—GREAT-ARTICLE.PHP";
+        let p = ParsedUrl::new(u);
+
+        assert_eq!(p.to_string(), u);
+        assert!(!p.is_secure());
         assert_eq!(p.keywords(),
                    vec!["awesome", "section", "my", "great", "article"]);
     }
