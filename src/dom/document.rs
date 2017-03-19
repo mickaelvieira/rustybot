@@ -1,33 +1,35 @@
 use dom::text::Text;
 use dom::link::Link;
+use dom::feeds::Feed;
 use dom::parsed_url::ParsedUrl;
 
-#[allow(dead_code)]
+#[derive(Debug)]
 pub struct Body {
-    content: String,
-    headings: Vec<Heading>,
-    links: Vec<Link>,
+    pub content: String,
+    pub headings: Vec<Heading>,
+    pub links: Vec<Link>,
 }
 
-#[allow(dead_code)]
+#[derive(Debug)]
 pub struct Head {
-    title: String,
-    charset: String,
-    feeds: Vec<String>,
-    twitter: String,
-    facebook: String,
-    language: String,
-    description: String,
-    canonical_url: ParsedUrl,
+    pub title: Text,
+    pub charset: String,
+    pub feeds: Vec<Feed>,
+    pub twitter: Social,
+    pub facebook: Social,
+    pub language: String,
+    pub description: String,
+    pub canonical_url: ParsedUrl,
 }
 
-#[allow(dead_code)]
+#[derive(Debug)]
 pub struct Document {
-    body: Body,
-    head: Head,
+    pub body: Body,
+    pub head: Head,
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct Heading {
     level: u32,
     value: Text,
@@ -54,6 +56,41 @@ impl Heading {
     }
 }
 
+#[allow(dead_code)]
+#[derive(Debug)]
+pub struct Social {
+    title: String,
+    description: String,
+    image: String,
+    url: ParsedUrl,
+}
+
+impl Social {
+    pub fn new(title: &str, description: &str, image: &str, url: &str) -> Social {
+        Social {
+            title: title.to_string(),
+            description: description.to_string(),
+            image: image.to_string(),
+            url: ParsedUrl::new(url),
+        }
+    }
+
+    pub fn get_title(&self) -> &str {
+        self.title.as_str()
+    }
+
+    pub fn get_description(&self) -> &str {
+        self.description.as_str()
+    }
+
+    pub fn get_image(&self) -> &str {
+        self.image.as_str()
+    }
+
+    pub fn get_url(&self) -> String {
+        self.url.to_string()
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -7,6 +7,7 @@ fn clean_chars(url: &str) -> String {
        .to_lowercase()
 }
 
+#[derive(Debug)]
 pub struct ParsedUrl {
     original: String,
     parsed: Url,

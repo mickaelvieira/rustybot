@@ -1,3 +1,5 @@
+use std::string::ToString;
+
 /// Remove unwanted character from text
 fn clean_html_text(text: &str) -> String {
     let text = text.to_string();
@@ -6,6 +8,7 @@ fn clean_html_text(text: &str) -> String {
 }
 
 /// Represent some texts extracted from the HTML document
+#[derive(Debug)]
 pub struct Text {
     pub value: String,
 }

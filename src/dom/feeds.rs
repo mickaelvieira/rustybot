@@ -2,6 +2,7 @@ use dom::parsed_url::ParsedUrl;
 
 /// http://www.jonathanturner.org/2016/02/down-the-rabbit-hole-with-traits.html
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct Feed {
     href: ParsedUrl,
     title: String,
@@ -10,7 +11,7 @@ pub struct Feed {
 
 #[allow(dead_code)]
 impl Feed {
-    fn new(url: &str, title: &str, feed_type: &str) -> Feed {
+    pub fn new(url: &str, title: &str, feed_type: &str) -> Feed {
         Feed {
             href: ParsedUrl::new(url),
             title: title.to_string(),
@@ -18,17 +19,13 @@ impl Feed {
         }
     }
 
-    fn is_rss(&self) -> bool {
+    pub fn is_rss(&self) -> bool {
         self.feed_type.as_str() == "application/rss+xml"
     }
 
-    fn is_atom(&self) -> bool {
+    pub fn is_atom(&self) -> bool {
         self.feed_type.as_str() == "application/atom+xml"
     }
-}
-
-pub fn get_feed() -> Feed {
-    Feed::new("http://google.com", "whatever", "application/atom+xml")
 }
 
 #[cfg(test)]

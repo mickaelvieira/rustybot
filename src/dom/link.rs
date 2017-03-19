@@ -2,6 +2,7 @@ use dom::text::Text;
 use dom::parsed_url::ParsedUrl;
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct Link {
     uri: ParsedUrl,
     value: Text,
