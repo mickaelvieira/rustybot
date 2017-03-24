@@ -1,10 +1,11 @@
-extern crate kuchiki;
-
 use url::Url;
 use kuchiki::NodeRef;
 use kuchiki::NodeDataRef;
 use kuchiki::ElementData;
+use kuchiki::Attributes;
 // use regex::Regex;
+//
+use std::cell::Ref;
 use dom::feeds::Feed;
 use dom::text::Text;
 use dom::parsed_url::ParsedUrl;
@@ -94,14 +95,19 @@ pub fn get_twitter_data(metas: &Vec<NodeDataRef<ElementData>>) -> Option<Social>
     None
 }
 
-fn find_facebook_value(name: &str, nodes: &Vec<NodeDataRef<ElementData>>) -> Option<String> {
-    for node in nodes {
-        let attrs = node.attributes.borrow();
-        let prop = attrs.get("property").unwrap_or("");
-        let ctt = attrs.get("content").unwrap_or("");
+fn find_facebook_value<'a>(name: &str, nodes: &'a Vec<NodeDataRef<ElementData>>) -> Option<&'a str> {
 
-        if prop == name {
-            return Some(ctt.to_string());
+    let item = nodes.iter().find(|node| {
+        let attrs = node.attributes.borrow();
+        let prop = attrs.get("property").unwrap_or_default();
+        prop == name
+    });
+
+    if item.is_some() {
+        let node = item.unwrap();
+        let attrs = node.attributes.borrow();
+        if let Some(ctt) = attrs.get("content") {
+            return Some(ctt);
         }
     }
 
@@ -109,15 +115,15 @@ fn find_facebook_value(name: &str, nodes: &Vec<NodeDataRef<ElementData>>) -> Opt
 }
 
 pub fn get_facebook_data(metas: &Vec<NodeDataRef<ElementData>>) -> Option<Social> {
-    let title = find_facebook_value("og:title", &metas).unwrap_or(String::new());
-    let url = find_facebook_value("og:url", &metas).unwrap_or(String::new());
-    let img = find_facebook_value("og:image", &metas).unwrap_or(String::new());
-    let desc = find_facebook_value("og:description", &metas).unwrap_or(String::new());
+    let title = find_facebook_value("og:title", &metas).unwrap_or("");
+    let url = find_facebook_value("og:url", &metas).unwrap_or("");
+    let img = find_facebook_value("og:image", &metas).unwrap_or("");
+    let desc = find_facebook_value("og:description", &metas).unwrap_or("");
 
-    let parsed = Url::parse(url.as_str());
+    let parsed = Url::parse(url);
 
     if parsed.is_ok() {
-        return Some(Social::new(title.as_str(), desc.as_str(), img.as_str(), url.as_str()));
+        return Some(Social::new(title, desc, img, url));
     }
 
     None
