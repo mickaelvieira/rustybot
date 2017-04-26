@@ -1,4 +1,4 @@
-use dom::parsed_url::ParsedUrl;
+use dom::url::ParsedUrl;
 
 /// http://www.jonathanturner.org/2016/02/down-the-rabbit-hole-with-traits.html
 
@@ -20,18 +20,29 @@ impl FeedType for String {
 #[derive(Debug)]
 pub struct Feed {
     href: ParsedUrl,
-    title: String,
+    title: Option<String>,
     feed_type: String,
 }
 
 #[allow(dead_code)]
 impl Feed {
-    pub fn new(url: ParsedUrl, title: &str, feed_type: &str) -> Feed {
+    pub fn new<S>(url: ParsedUrl, title: Option<String>, feed_type: S) -> Feed
+        where S: Into<String>
+    {
         Feed {
             href: url,
-            title: title.to_string(),
-            feed_type: feed_type.to_string(),
+            title: title,
+            feed_type: feed_type.into(),
         }
+    }
+
+    pub fn has_title(&self) -> bool {
+        self.title.is_some()
+    }
+
+    pub fn get_title(self) -> String {
+        let title = self.title.unwrap();
+        title.to_owned()
     }
 }
 
@@ -53,14 +64,14 @@ mod tests {
     #[test]
     fn it_creates_a_new_instance() {
         let _ = Feed::new(ParsedUrl::new("http://google.com"),
-                          "whatever",
+                          Some("whatever".to_string()),
                           "application/atom+xml");
     }
 
     #[test]
     fn it_knows_when_it_is_a_rss_feed() {
         let f = Feed::new(ParsedUrl::new("http://google.com"),
-                          "whatever",
+                          Some("whatever".to_string()),
                           "application/rss+xml");
         assert!(f.is_rss());
         assert!(!f.is_atom());
@@ -69,7 +80,7 @@ mod tests {
     #[test]
     fn it_knows_when_it_is_an_atom_feed() {
         let f = Feed::new(ParsedUrl::new("http://google.com"),
-                          "whatever",
+                          Some("whatever".to_string()),
                           "application/atom+xml");
         assert!(!f.is_rss());
         assert!(f.is_atom());

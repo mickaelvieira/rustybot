@@ -1,7 +1,7 @@
-use dom::text::Text;
+use dom::text::HtmlString;
 use dom::link::Link;
 use dom::feeds::Feed;
-use dom::parsed_url::ParsedUrl;
+use dom::url::ParsedUrl;
 
 #[derive(Debug)]
 pub struct Body {
@@ -12,14 +12,23 @@ pub struct Body {
 
 #[derive(Debug)]
 pub struct Head {
-    pub title: Text,
+    pub title: Option<String>,
     pub charset: String,
     pub feeds: Vec<Feed>,
-    pub twitter: Social,
-    pub facebook: Social,
+    pub twitter: Option<Social>,
+    pub facebook: Option<Social>,
     pub language: String,
-    pub description: String,
-    pub canonical_url: ParsedUrl,
+    pub description: Option<String>,
+    pub canonical_url: Option<ParsedUrl>,
+}
+
+impl Head {
+    pub fn has_facebook_data(&self) -> bool {
+        self.facebook.is_some()
+    }
+    pub fn has_twitter_data(&self) -> bool {
+        self.facebook.is_some()
+    }
 }
 
 #[derive(Debug)]
@@ -32,7 +41,7 @@ pub struct Document {
 #[derive(Debug)]
 pub struct Heading {
     level: u32,
-    value: Text,
+    value: String,
 }
 
 impl Heading {
@@ -47,7 +56,7 @@ impl Heading {
 
         Heading {
             level: level,
-            value: Text::new(value),
+            value: String::from_html(value),
         }
     }
 

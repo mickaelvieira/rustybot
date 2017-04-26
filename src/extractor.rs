@@ -1,20 +1,38 @@
-// use url::Url;
+
 use kuchiki::NodeRef;
 use kuchiki::NodeDataRef;
 use kuchiki::ElementData;
-// use kuchiki::Attributes;
-// use regex::Regex;
-//
-// use std::cell::Ref;
+
 use dom::feeds::Feed;
 use dom::feeds::FeedType;
-use dom::text::Text;
-use dom::parsed_url::parse;
-use dom::parsed_url::ParsedUrl;
+use dom::text::HtmlString;
+use dom::url::ParsedUrl;
 use dom::document::Document;
 use dom::document::Head;
 use dom::document::Body;
 use dom::document::Social;
+
+
+trait DOMElement {
+    fn has_attribute(&self, name: &str) -> bool;
+    fn get_attribute(&self, name: &str) -> Option<String>;
+}
+
+impl DOMElement for NodeDataRef<ElementData> {
+    fn has_attribute(&self, name: &str) -> bool {
+        let attrs = self.attributes.borrow();
+        attrs.contains(name)
+    }
+
+    fn get_attribute(&self, name: &str) -> Option<String> {
+        let attrs = self.attributes.borrow();
+        let value = attrs.get(name);
+        if value.is_some() {
+            return Some(value.unwrap().to_string());
+        }
+        None
+    }
+}
 
 pub fn extract_data(document: &NodeRef) -> Document {
 
@@ -28,14 +46,14 @@ pub fn extract_data(document: &NodeRef) -> Document {
     let twt = get_twitter_data(&metas);
 
     let head = Head {
-        title: Text::new(title.unwrap().as_str()),
+        title: title,
         charset: String::new(),
         feeds: feeds,
-        twitter: twt.unwrap(),
-        facebook: fbk.unwrap(),
+        twitter: twt,
+        facebook: fbk,
         language: String::new(),
-        description: String::new(),
-        canonical_url: ParsedUrl::new("http://google.com"),
+        description: None,
+        canonical_url: Some(ParsedUrl::new("http://google.com")),
     };
 
     let body = Body {
@@ -54,13 +72,15 @@ pub fn extract_data(document: &NodeRef) -> Document {
 fn get_feeds(links: &Vec<NodeDataRef<ElementData>>) -> Vec<Feed> {
     let mut feeds: Vec<Feed> = Vec::new();
     for link in links {
-        let attrs = link.attributes.borrow();
-        if attrs.contains("href") && attrs.contains("type") {
-            let feed_type = attrs.get("type").unwrap_or("");
-            let feed_url = parse(attrs.get("href").unwrap_or(""));
-            let feed_title = attrs.get("title").unwrap_or("");
+        let feed_type = link.get_attribute("type");
+        let feed_url = link.get_attribute("href");
+        let feed_title = link.get_attribute("title");
 
-            if feed_url.is_ok() && (feed_type.to_string().is_rss() || feed_type.to_string().is_atom()) {
+        if feed_type.is_some() && feed_url.is_some() {
+            let feed_type = feed_type.unwrap();
+            let feed_url = ParsedUrl::parse(feed_url.unwrap());
+
+            if feed_url.is_ok() && (feed_type.is_rss() || feed_type.is_atom()) {
                 feeds.push(Feed::new(feed_url.unwrap(), feed_title, feed_type));
             }
         }
@@ -70,14 +90,13 @@ fn get_feeds(links: &Vec<NodeDataRef<ElementData>>) -> Vec<Feed> {
 }
 
 fn find_twitter_value(name: &str, nodes: &Vec<NodeDataRef<ElementData>>) -> Option<String> {
-    for node in nodes {
-        let attrs = node.attributes.borrow();
-        let prop = attrs.get("property").unwrap_or("");
-        let ctt = attrs.get("content").unwrap_or("");
+    let item = nodes.iter().find(|node| {
+        let prop = node.get_attribute("property");
+        prop.is_some() && prop.unwrap() == name
+    });
 
-        if prop == name {
-            return Some(ctt.to_string());
-        }
+    if item.is_some() {
+        return item.unwrap().get_attribute("content");
     }
 
     None
@@ -90,7 +109,7 @@ pub fn get_twitter_data(metas: &Vec<NodeDataRef<ElementData>>) -> Option<Social>
     let desc = find_twitter_value("twitter:description", &metas);
 
     if title.is_some() && img.is_some() && desc.is_some() && url.is_some() {
-        let parsed = parse(url.unwrap().as_str());
+        let parsed = ParsedUrl::parse(url.unwrap());
         if parsed.is_ok() {
             return Some(Social::new(title.unwrap(), desc.unwrap(), img.unwrap(), parsed.unwrap()));
         }
@@ -104,18 +123,12 @@ fn find_facebook_value<'a>(name: &str,
                            -> Option<String> {
 
     let item = nodes.iter().find(|node| {
-        let attrs = node.attributes.borrow();
-        let prop = attrs.get("property").unwrap_or_default();
-        prop == name
+        let prop = node.get_attribute("property");
+        prop.is_some() && prop.unwrap() == name
     });
 
     if item.is_some() {
-        let node = item.unwrap();
-        let attrs = node.attributes.borrow();
-        let ctt = attrs.get("content").unwrap_or("");
-        // if let Some(ctt) = attrs.get("content") {
-            return Some(ctt.to_string());
-        // }
+        return item.unwrap().get_attribute("content");
     }
 
     None
@@ -128,7 +141,7 @@ pub fn get_facebook_data(metas: &Vec<NodeDataRef<ElementData>>) -> Option<Social
     let desc = find_facebook_value("og:description", &metas);
 
     if title.is_some() && img.is_some() && desc.is_some() && url.is_some() {
-        let parsed = parse(url.unwrap().as_str());
+        let parsed = ParsedUrl::parse(url.unwrap());
         if parsed.is_ok() {
             return Some(Social::new(title.unwrap(), desc.unwrap(), img.unwrap(), parsed.unwrap()));
         }
@@ -145,7 +158,7 @@ fn get_page_title(document: &NodeRef) -> Option<String> {
             .collect::<Vec<NodeDataRef<ElementData>>>();
 
         if tags.len() > 0 {
-            return Some(tags.remove(0).text_contents());
+            return Some(String::from_html(tags.remove(0).text_contents()));
         }
     }
 
@@ -309,4 +322,12 @@ mod tests {
         assert_eq!(links.len(), 7);
         assert_eq!(feeds.len(), 2);
     }
+
+    // fn it_retrieves_the_canonical_url() {
+    //
+    //
+    //
+    //     <link rel="canonical" href="http://example.com/wordpress/seo-plugin/">
+    //
+    // }
 }
