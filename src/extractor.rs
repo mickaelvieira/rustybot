@@ -1,13 +1,15 @@
-use url::Url;
+// use url::Url;
 use kuchiki::NodeRef;
 use kuchiki::NodeDataRef;
 use kuchiki::ElementData;
-use kuchiki::Attributes;
+// use kuchiki::Attributes;
 // use regex::Regex;
 //
-use std::cell::Ref;
+// use std::cell::Ref;
 use dom::feeds::Feed;
+use dom::feeds::FeedType;
 use dom::text::Text;
+use dom::parsed_url::parse;
 use dom::parsed_url::ParsedUrl;
 use dom::document::Document;
 use dom::document::Head;
@@ -54,11 +56,12 @@ fn get_feeds(links: &Vec<NodeDataRef<ElementData>>) -> Vec<Feed> {
     for link in links {
         let attrs = link.attributes.borrow();
         if attrs.contains("href") && attrs.contains("type") {
-            let feed_type = attrs.get("type").unwrap();
-            let feed_url = attrs.get("href").unwrap();
+            let feed_type = attrs.get("type").unwrap_or("");
+            let feed_url = parse(attrs.get("href").unwrap_or(""));
             let feed_title = attrs.get("title").unwrap_or("");
-            if feed_type == "application/rss+xml" || feed_type == "application/atom+xml" {
-                feeds.push(Feed::new(feed_url, feed_title, feed_type));
+
+            if feed_url.is_ok() && (feed_type.to_string().is_rss() || feed_type.to_string().is_atom()) {
+                feeds.push(Feed::new(feed_url.unwrap(), feed_title, feed_type));
             }
         }
     }
@@ -81,21 +84,24 @@ fn find_twitter_value(name: &str, nodes: &Vec<NodeDataRef<ElementData>>) -> Opti
 }
 
 pub fn get_twitter_data(metas: &Vec<NodeDataRef<ElementData>>) -> Option<Social> {
-    let title = find_twitter_value("twitter:title", &metas).unwrap_or(String::new());
-    let url = find_twitter_value("twitter:url", &metas).unwrap_or(String::new());
-    let img = find_twitter_value("twitter:image", &metas).unwrap_or(String::new());
-    let desc = find_twitter_value("twitter:description", &metas).unwrap_or(String::new());
+    let title = find_twitter_value("twitter:title", &metas);
+    let url = find_twitter_value("twitter:url", &metas);
+    let img = find_twitter_value("twitter:image", &metas);
+    let desc = find_twitter_value("twitter:description", &metas);
 
-    let parsed = Url::parse(url.as_str());
-
-    if parsed.is_ok() {
-        return Some(Social::new(title.as_str(), desc.as_str(), img.as_str(), url.as_str()));
+    if title.is_some() && img.is_some() && desc.is_some() && url.is_some() {
+        let parsed = parse(url.unwrap().as_str());
+        if parsed.is_ok() {
+            return Some(Social::new(title.unwrap(), desc.unwrap(), img.unwrap(), parsed.unwrap()));
+        }
     }
 
     None
 }
 
-fn find_facebook_value<'a>(name: &str, nodes: &'a Vec<NodeDataRef<ElementData>>) -> Option<&'a str> {
+fn find_facebook_value<'a>(name: &str,
+                           nodes: &'a Vec<NodeDataRef<ElementData>>)
+                           -> Option<String> {
 
     let item = nodes.iter().find(|node| {
         let attrs = node.attributes.borrow();
@@ -106,24 +112,26 @@ fn find_facebook_value<'a>(name: &str, nodes: &'a Vec<NodeDataRef<ElementData>>)
     if item.is_some() {
         let node = item.unwrap();
         let attrs = node.attributes.borrow();
-        if let Some(ctt) = attrs.get("content") {
-            return Some(ctt);
-        }
+        let ctt = attrs.get("content").unwrap_or("");
+        // if let Some(ctt) = attrs.get("content") {
+            return Some(ctt.to_string());
+        // }
     }
 
     None
 }
 
 pub fn get_facebook_data(metas: &Vec<NodeDataRef<ElementData>>) -> Option<Social> {
-    let title = find_facebook_value("og:title", &metas).unwrap_or("");
-    let url = find_facebook_value("og:url", &metas).unwrap_or("");
-    let img = find_facebook_value("og:image", &metas).unwrap_or("");
-    let desc = find_facebook_value("og:description", &metas).unwrap_or("");
+    let title = find_facebook_value("og:title", &metas);
+    let url = find_facebook_value("og:url", &metas);
+    let img = find_facebook_value("og:image", &metas);
+    let desc = find_facebook_value("og:description", &metas);
 
-    let parsed = Url::parse(url);
-
-    if parsed.is_ok() {
-        return Some(Social::new(title, desc, img, url));
+    if title.is_some() && img.is_some() && desc.is_some() && url.is_some() {
+        let parsed = parse(url.unwrap().as_str());
+        if parsed.is_ok() {
+            return Some(Social::new(title.unwrap(), desc.unwrap(), img.unwrap(), parsed.unwrap()));
+        }
     }
 
     None
@@ -133,8 +141,7 @@ pub fn get_facebook_data(metas: &Vec<NodeDataRef<ElementData>>) -> Option<Social
 fn get_page_title(document: &NodeRef) -> Option<String> {
     let collection = document.select("head title");
     if collection.is_ok() {
-        let mut tags = collection
-            .unwrap()
+        let mut tags = collection.unwrap()
             .collect::<Vec<NodeDataRef<ElementData>>>();
 
         if tags.len() > 0 {
@@ -142,15 +149,14 @@ fn get_page_title(document: &NodeRef) -> Option<String> {
         }
     }
 
-    return None
+    return None;
 }
 
 #[allow(dead_code)]
 pub fn get_meta_tags(document: &NodeRef) -> Vec<NodeDataRef<ElementData>> {
     let collection = document.select("head meta");
     if collection.is_ok() {
-        return collection
-            .unwrap()
+        return collection.unwrap()
             .collect::<Vec<NodeDataRef<ElementData>>>();
     }
 
@@ -161,8 +167,7 @@ pub fn get_meta_tags(document: &NodeRef) -> Vec<NodeDataRef<ElementData>> {
 fn get_link_tags(document: &NodeRef) -> Vec<NodeDataRef<ElementData>> {
     let collection = document.select("head link");
     if collection.is_ok() {
-        return collection
-            .unwrap()
+        return collection.unwrap()
             .collect::<Vec<NodeDataRef<ElementData>>>();
     }
 
@@ -172,6 +177,7 @@ fn get_link_tags(document: &NodeRef) -> Vec<NodeDataRef<ElementData>> {
 #[cfg(test)]
 mod tests {
 
+    extern crate kuchiki;
     use super::*;
     use kuchiki::traits::*;
 
@@ -180,7 +186,8 @@ mod tests {
         let html = "
             <html>
             <head></head>
-            <body></body>".to_string();
+            <body></body>"
+            .to_string();
 
         let document = kuchiki::parse_html().one(html);
         let title = get_page_title(&document);
@@ -194,7 +201,8 @@ mod tests {
             <head>
                 <title>The Title</title>
             </head>
-            <body></body>".to_string();
+            <body></body>"
+            .to_string();
 
         let document = kuchiki::parse_html().one(html);
         let title = get_page_title(&document);
@@ -206,7 +214,8 @@ mod tests {
         let html = "
             <html>
             <head></head>
-            <body></body>".to_string();
+            <body></body>"
+            .to_string();
 
         let document = kuchiki::parse_html().one(html);
         let metas = get_meta_tags(&document);
@@ -221,7 +230,8 @@ mod tests {
                 <meta name=\"title\"  content=\"The title\" />
                 <meta name=\"description\"  content=\"The description\" />
             </head>
-            <body></body>".to_string();
+            <body></body>"
+            .to_string();
 
         let document = kuchiki::parse_html().one(html);
         let metas = get_meta_tags(&document);
@@ -233,7 +243,8 @@ mod tests {
         let html = "
             <html>
             <head></head>
-            <body></body>".to_string();
+            <body></body>"
+            .to_string();
 
         let document = kuchiki::parse_html().one(html);
         let links = get_link_tags(&document);
@@ -249,7 +260,8 @@ mod tests {
                 <link rel=\"apple-touch-icon-precomposed\" sizes=\"114×114\" />
                 <link rel=\"apple-touch-icon-precomposed\" />
             </head>
-            <body></body>".to_string();
+            <body></body>"
+            .to_string();
 
         let document = kuchiki::parse_html().one(html);
         let links = get_link_tags(&document);
@@ -265,7 +277,8 @@ mod tests {
                 <link rel=\"apple-touch-icon-precomposed\" sizes=\"114×114\" />
                 <link rel=\"apple-touch-icon-precomposed\" />
             </head>
-            <body></body>".to_string();
+            <body></body>"
+            .to_string();
 
         let document = kuchiki::parse_html().one(html);
         let links = get_link_tags(&document);
@@ -284,15 +297,16 @@ mod tests {
                 <link rel=\"apple-touch-icon-precomposed\" />
                 <link href=\"http://cargo.io/rss.rs\" type=\"application/rss+xml\" />
                 <link href=\"http://cargo.io/atom.rs\" type=\"application/atom+xml\" />
+                <link href=\"cargo.io/atom.rs\" type=\"application/atom+xml\" />
+                <link href=\"http://cargo.io/atom.rs\" type=\"application/xml\" />
             </head>
-            <body></body>".to_string();
+            <body></body>"
+            .to_string();
 
         let document = kuchiki::parse_html().one(html);
         let links = get_link_tags(&document);
         let feeds = get_feeds(&links);
-        assert_eq!(links.len(), 5);
+        assert_eq!(links.len(), 7);
         assert_eq!(feeds.len(), 2);
     }
-
-
 }

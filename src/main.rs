@@ -1,5 +1,5 @@
-#[macro_use]
-extern crate string_cache;
+// #[macro_use]
+// extern crate string_cache;
 extern crate rustybot;
 extern crate kuchiki;
 extern crate url;

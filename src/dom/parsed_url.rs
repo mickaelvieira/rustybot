@@ -3,8 +3,20 @@ use regex::Regex;
 
 fn clean_chars(url: &str) -> String {
     url.trim()
-       .replace("—", "-")
-       .to_lowercase()
+        .replace("—", "-")
+        .to_lowercase()
+}
+
+/// TODO: move this into a macro
+pub fn parse(url: &str) -> Result<ParsedUrl, &'static str> {
+    let parsed = Url::parse(clean_chars(url).as_str());
+    if parsed.is_ok() {
+        return Ok(ParsedUrl {
+            original: String::from(url),
+            parsed: parsed.unwrap(),
+        });
+    }
+    Err("Could not parse url")
 }
 
 #[derive(Debug)]

@@ -66,12 +66,12 @@ pub struct Social {
 }
 
 impl Social {
-    pub fn new(title: &str, description: &str, image: &str, url: &str) -> Social {
+    pub fn new(title: String, description: String, image: String, url: ParsedUrl) -> Social {
         Social {
-            title: title.to_string(),
-            description: description.to_string(),
-            image: image.to_string(),
-            url: ParsedUrl::new(url),
+            title: title,
+            description: description,
+            image: image,
+            url: url,
         }
     }
 
