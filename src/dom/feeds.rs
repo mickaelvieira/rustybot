@@ -11,12 +11,12 @@ impl FeedType for String {
     fn is_atom(&self) -> bool {
         self == "application/atom+xml"
     }
+
     fn is_rss(&self) -> bool {
         self == "application/rss+xml"
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Feed {
     href: ParsedUrl,
@@ -24,7 +24,6 @@ pub struct Feed {
     feed_type: String,
 }
 
-#[allow(dead_code)]
 impl Feed {
     pub fn new<S>(url: ParsedUrl, title: Option<String>, feed_type: S) -> Feed
         where S: Into<String>

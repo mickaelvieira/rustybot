@@ -1,4 +1,3 @@
-
 use kuchiki::NodeRef;
 use kuchiki::NodeDataRef;
 use kuchiki::ElementData;
@@ -11,7 +10,6 @@ use dom::document::Document;
 use dom::document::Head;
 use dom::document::Body;
 use dom::document::Social;
-
 
 trait DOMElement {
     fn has_attribute(&self, name: &str) -> bool;
@@ -35,12 +33,12 @@ impl DOMElement for NodeDataRef<ElementData> {
 }
 
 pub fn extract_data(document: &NodeRef) -> Document {
-
     let metas = get_meta_tags(&document);
     let links = get_link_tags(&document);
     let title = get_page_title(&document);
-
     let feeds = get_feeds(&links);
+    let curl  = get_canonical_url(&links);
+    let desc  = get_page_description(&metas);
 
     let fbk = get_facebook_data(&metas);
     let twt = get_twitter_data(&metas);
@@ -52,8 +50,8 @@ pub fn extract_data(document: &NodeRef) -> Document {
         twitter: twt,
         facebook: fbk,
         language: String::new(),
-        description: None,
-        canonical_url: Some(ParsedUrl::new("http://google.com")),
+        description: desc,
+        canonical_url: curl,
     };
 
     let body = Body {
@@ -68,7 +66,6 @@ pub fn extract_data(document: &NodeRef) -> Document {
     }
 }
 
-#[allow(dead_code)]
 fn get_feeds(links: &Vec<NodeDataRef<ElementData>>) -> Vec<Feed> {
     let mut feeds: Vec<Feed> = Vec::new();
     for link in links {
@@ -150,7 +147,6 @@ pub fn get_facebook_data(metas: &Vec<NodeDataRef<ElementData>>) -> Option<Social
     None
 }
 
-#[allow(dead_code)]
 fn get_page_title(document: &NodeRef) -> Option<String> {
     let collection = document.select("head title");
     if collection.is_ok() {
@@ -165,7 +161,35 @@ fn get_page_title(document: &NodeRef) -> Option<String> {
     return None;
 }
 
-#[allow(dead_code)]
+fn get_page_description(metas: &Vec<NodeDataRef<ElementData>>) -> Option<String> {
+    let item = metas.iter().find(|node| {
+        let prop = node.get_attribute("name");
+        prop.is_some() && prop.unwrap() == "description"
+    });
+
+    if item.is_some() {
+        return item.unwrap().get_attribute("content");
+    }
+
+    None
+}
+
+fn get_canonical_url(links: &Vec<NodeDataRef<ElementData>>) -> Option<ParsedUrl> {
+    for link in links {
+        let rel_attr = link.get_attribute("rel");
+        let feed_url = link.get_attribute("href");
+        if feed_url.is_some() && rel_attr.is_some() && rel_attr.unwrap() == "canonical" {
+            let canonical_url = ParsedUrl::parse(feed_url.unwrap());
+
+            if canonical_url.is_ok() {
+                return Some(canonical_url.unwrap());
+            }
+        }
+    }
+
+    None
+}
+
 pub fn get_meta_tags(document: &NodeRef) -> Vec<NodeDataRef<ElementData>> {
     let collection = document.select("head meta");
     if collection.is_ok() {
@@ -176,7 +200,6 @@ pub fn get_meta_tags(document: &NodeRef) -> Vec<NodeDataRef<ElementData>> {
     Vec::new()
 }
 
-#[allow(dead_code)]
 fn get_link_tags(document: &NodeRef) -> Vec<NodeDataRef<ElementData>> {
     let collection = document.select("head link");
     if collection.is_ok() {
@@ -191,6 +214,7 @@ fn get_link_tags(document: &NodeRef) -> Vec<NodeDataRef<ElementData>> {
 mod tests {
 
     extern crate kuchiki;
+
     use super::*;
     use kuchiki::traits::*;
 
@@ -204,7 +228,7 @@ mod tests {
 
         let document = kuchiki::parse_html().one(html);
         let title = get_page_title(&document);
-        assert_eq!(title, None);
+        assert!(title.is_none());
     }
 
     #[test]
@@ -323,11 +347,69 @@ mod tests {
         assert_eq!(feeds.len(), 2);
     }
 
-    // fn it_retrieves_the_canonical_url() {
-    //
-    //
-    //
-    //     <link rel="canonical" href="http://example.com/wordpress/seo-plugin/">
-    //
-    // }
+    #[test]
+    fn it_returns_none_when_there_is_no_description() {
+        let html = "
+            <html>
+            <head>
+                <meta name=\"keywords\" content=\"meta description search results.\">
+            </head>
+            <body></body>"
+            .to_string();
+
+        let document = kuchiki::parse_html().one(html);
+        let metas = get_meta_tags(&document);
+        let description = get_page_description(&metas);
+        assert!(description.is_none());
+    }
+
+    #[test]
+    fn it_returns_the_description() {
+        let html = "
+            <html>
+            <head>
+                <link rel=\"canonical\" href=\"http://example.com/wordpress/seo-plugin/\">
+                <meta name=\"description\" content=\"This is an example of a meta description\">
+            </head>
+            <body></body>"
+            .to_string();
+
+        let document = kuchiki::parse_html().one(html);
+        let metas = get_meta_tags(&document);
+        let description = get_page_description(&metas);
+        assert!(description.is_some());
+        assert_eq!(description.unwrap(), "This is an example of a meta description".to_string());
+    }
+
+    #[test]
+    fn it_returns_none_when_there_is_no_canonical_url() {
+        let html = "
+            <html>
+            <head>
+            </head>
+            <body></body>"
+            .to_string();
+
+        let document = kuchiki::parse_html().one(html);
+        let links = get_link_tags(&document);
+        let url = get_canonical_url(&links);
+        assert!(url.is_none());
+    }
+
+    #[test]
+    fn it_retrieves_the_canonical_url() {
+        let html = "
+            <html>
+            <head>
+                <link rel=\"canonical\" href=\"http://example.com/wordpress/seo-plugin/\">
+            </head>
+            <body></body>"
+            .to_string();
+
+        let document = kuchiki::parse_html().one(html);
+        let links = get_link_tags(&document);
+        let url = get_canonical_url(&links);
+        assert!(url.is_some());
+        assert_eq!(url.unwrap().to_string(), "http://example.com/wordpress/seo-plugin/".to_string());
+    }
 }
